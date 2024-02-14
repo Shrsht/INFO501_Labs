@@ -1,6 +1,7 @@
 # built-in
 import requests
 import os
+import time
 
 from multiprocessing import Pool
 from time import sleep
@@ -39,9 +40,27 @@ def genius(search_term, per_page=15):
     genius_search_url = f"http://api.genius.com/search?q={search_term}&" + \
                         f"access_token={ACCESS_TOKEN}&per_page={per_page}"
     
-    response = requests.get(genius_search_url)
-    json_data = response.json()
-    
+    try:
+        response = requests.get(genius_search_url)
+        json_data = response.json()
+    except requests.exceptions.HTTPError as err:
+        if response.status_code == 429: 
+            print("Rate limit exceeded. Waiting before retrying...")
+            time.sleep(60) 
+    except requests.exceptions.HTTPError as err:
+    # Handle HTTP errors (status codes other than 2xx)
+        print("HTTP error:", err)
+    except requests.exceptions.ConnectionError as err:
+    # Handle connection errors (e.g., network issues)
+        print("Error connecting:", err)
+    except requests.exceptions.Timeout as err:
+    # Handle timeout errors
+        print("Timeout error:", err)
+    except requests.exceptions.RequestException as err:
+    # Handle other request-related errors
+        print("Request error:", err)
+
+
     return json_data['response']['hits']
 
 def genius_to_df(search_term, n_results_per_term=10, 
@@ -113,9 +132,9 @@ def genius_to_dfs(search_terms, **kwargs):
         
         # add to list of DataFrames
         dfs.append(df)
-
-    return pd.concat(dfs)
-
+    out = pd.concat(dfs)    
+    return out.to_csv('./Desktop/SP24_Projects/INFO501_Labs/Output.csv')
+ 
 def testing():
     print('Testing testing, 1, 2, 3.')
     return None
@@ -127,7 +146,7 @@ def job_test(num):
     return num * 2
 
 
-# print("__name__ is", __name__)
+print("__name__ is", __name__)
 if __name__ == "__main__":
 
     # ------------------------------------
@@ -165,11 +184,7 @@ if __name__ == "__main__":
     #   API MULTIPROCESSING EXAMPLE
     # ------------------------------------
 
-    search_terms = ['The Beatles', 
-                    'Missy Elliot', 
-                    'Andy Shauf', 
-                    'Slowdive', 
-                    'Men I Trust']
+    search_terms = ['PNL','The Deftones','Nine Inch Nails','Arctic Monkeys','Arjit Singh','Eminem']
     
     # (optional) if you need to pass multiple arguments
     # n = 20
@@ -182,7 +197,7 @@ if __name__ == "__main__":
 
     df_genius = pd.concat(results)
 
-    df_genius.to_csv('./data/genius_data_mp.csv', index=False)
+    df_genius.to_csv('genius_data_mp.csv', index=False)
 
     
 
